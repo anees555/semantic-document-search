@@ -1,0 +1,15 @@
+
+__pycache__/
+vectorenv/
+.vscode/
+.ipynb_checkpoints
+.env
+
+data/chroma_db/
+data/database/
+*.db
+*.sqlite
+*.sqlite3
+
+documents/
+data/uploads/
