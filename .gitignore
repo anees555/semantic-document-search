@@ -1,15 +1,50 @@
 
+# Python
 __pycache__/
-vectorenv/
-.vscode/
-.ipynb_checkpoints
-.env
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+*.egg
 
-data/chroma_db/
-data/database/
+# Virtual Environment
+vectorenv/
+venv/
+.venv/
+env/
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Database & Data
 *.db
 *.sqlite
 *.sqlite3
+*.log
+chroma_db/
+data/
 
+# Environment
+.env
+.env.local
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Documents (uncomment if you want to ignore uploaded docs)
 documents/
-data/uploads/
+data/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
