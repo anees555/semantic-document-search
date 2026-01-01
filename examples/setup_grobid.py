@@ -63,21 +63,21 @@ def start_grobid_docker():
         try:
             process.wait()
         except KeyboardInterrupt:
-            print("\n🛑 Stopping Grobid server...")
+            print("\n Stopping Grobid server...")
             process.terminate()
             
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error starting Docker container: {e}")
+        print(f" Error starting Docker container: {e}")
         return False
     except KeyboardInterrupt:
-        print("\n🛑 Cancelled by user")
+        print("\nCancelled by user")
         return False
     
     return True
 
 def show_manual_instructions():
     """Show manual installation instructions"""
-    print("\n📖 Manual Grobid Setup Instructions:")
+    print("\n Manual Grobid Setup Instructions:")
     print("="*50)
     print("1. Prerequisites:")
     print("   - Java 8 or higher")
@@ -103,16 +103,16 @@ def main():
     
     # Check if server is already running
     if check_grobid_server():
-        print("✅ Grobid server is already running!")
+        print(" Grobid server is already running!")
         print("You can proceed with document processing.")
         return
     
     print("Grobid server is not running.")
     print("\nSetup options:")
-    print("1. 🐳 Start with Docker (recommended)")
-    print("2. 📖 Show manual installation instructions")
-    print("3. 🔍 Check server status only")
-    print("4. ❌ Exit")
+    print("1.  Start with Docker (recommended)")
+    print("2.  Show manual installation instructions")
+    print("3.  Check server status only")
+    print("4.  Exit")
     
     while True:
         try:
@@ -120,14 +120,14 @@ def main():
             
             if choice == '1':
                 if not check_docker_available():
-                    print("❌ Docker is not available on this system.")
+                    print(" Docker is not available on this system.")
                     print("Please install Docker or use manual installation (option 2).")
                     continue
                 
-                print("\n🚀 Starting Grobid with Docker...")
+                print("\n Starting Grobid with Docker...")
                 success = start_grobid_docker()
                 if success:
-                    print("✅ Grobid server setup completed!")
+                    print(" Grobid server setup completed!")
                 break
                 
             elif choice == '2':
@@ -135,30 +135,30 @@ def main():
                 break
                 
             elif choice == '3':
-                print("\n🔍 Checking server status...")
+                print("\n Checking server status...")
                 if check_grobid_server():
-                    print("✅ Grobid server is running!")
+                    print(" Grobid server is running!")
                 else:
-                    print("❌ Grobid server is not running.")
+                    print(" Grobid server is not running.")
                 break
                 
             elif choice == '4':
-                print("👋 Exiting...")
+                print(" Exiting...")
                 break
                 
             else:
-                print("❌ Invalid choice. Please enter 1-4.")
+                print(" Invalid choice. Please enter 1-4.")
                 
         except KeyboardInterrupt:
-            print("\n👋 Exiting...")
+            print("\n Exiting...")
             break
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f" Error: {e}")
             break
 
 def quick_test():
     """Quick test of the enhanced document loader"""
-    print("\n🧪 Quick Test of Enhanced Document Loader")
+    print("\n Quick Test of Enhanced Document Loader")
     print("-"*40)
     
     try:
@@ -173,21 +173,21 @@ def quick_test():
         print(f"Server Available: {status['server_available']}")
         
         if status['server_available']:
-            print("✅ Ready to process academic papers with Grobid!")
+            print(" Ready to process academic papers with Grobid!")
         else:
-            print("⚠️  Grobid server not available - will use PyPDF2 fallback")
+            print("  Grobid server not available - will use PyPDF2 fallback")
             
     except ImportError:
-        print("❌ Cannot import document_loader module")
+        print(" Cannot import document_loader module")
     except Exception as e:
-        print(f"❌ Error during test: {e}")
+        print(f" Error during test: {e}")
 
 if __name__ == "__main__":
     try:
         main()
         quick_test()
     except KeyboardInterrupt:
-        print("\n👋 Goodbye!")
+        print("\n Goodbye!")
     except Exception as e:
-        print(f"\n❌ Unexpected error: {e}")
+        print(f"\n Unexpected error: {e}")
         sys.exit(1)
