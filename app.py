@@ -14,12 +14,26 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent / 'src'))
 
 from integrated_pipeline import DocumentSearchPipeline
+from rag_qa_pipeline import RAGQuestionAnsweringPipeline
 
 
 def main():
-    """Main application entry point with integrated pipeline"""
-    print(" Semantic Document Search - Integrated Pipeline")
+    """Main application entry point with integrated pipeline and RAG Q&A"""
+    print("🔍 Semantic Document Search - Enhanced with RAG Q&A")
     print("=" * 60)
+    
+    # Check for command line arguments
+    mode = 'search'  # default mode
+    if len(sys.argv) > 1:
+        if sys.argv[1] in ['qa', 'rag', 'question']:
+            mode = 'qa'
+        elif sys.argv[1] in ['search', 'semantic']:
+            mode = 'search'
+        elif sys.argv[1] in ['help', '--help', '-h']:
+            display_help()
+            return
+    
+    print(f"\n📋 Mode: {'RAG Q&A' if mode == 'qa' else 'Semantic Search'}")
     
     # Initialize integrated pipeline
     try:
@@ -67,9 +81,26 @@ def main():
             print(f"   Embeddings: {results['embeddings_generated']}")
             print(f"   Stored: {results['documents_stored']}")
             
-            # Start interactive search
-            print(f"\n Starting interactive search...")
-            pipeline.interactive_search()
+            if mode == 'qa':
+                # Initialize and start RAG Q&A system
+                print(f"\n🤖 Initializing RAG Q&A system...")
+                try:
+                    rag_pipeline = RAGQuestionAnsweringPipeline(
+                        document_pipeline=pipeline,
+                        max_context_tokens=3000,
+                        use_gpu=True,
+                        citation_style="academic"
+                    )
+                    print(f"\n🚀 Starting interactive Q&A session...")
+                    rag_pipeline.interactive_qa_session()
+                except Exception as e:
+                    print(f"❌ RAG Q&A initialization failed: {e}")
+                    print(f"\n🔄 Falling back to semantic search mode...")
+                    pipeline.interactive_search()
+            else:
+                # Start interactive search
+                print(f"\n🔍 Starting interactive search...")
+                pipeline.interactive_search()
         else:
             print(f" Processing failed: {results.get('error', 'Unknown error')}")
     
@@ -77,6 +108,56 @@ def main():
         print(f" Application error: {str(e)}")
         import traceback
         traceback.print_exc()
+
+
+def display_help():
+    """Display help information"""
+    help_text = """
+ Semantic Document Search - Enhanced with RAG Q&A
+==================================================
+
+USAGE:
+  python app.py [mode]
+
+MODES:
+  search, semantic  - Semantic document search (default)
+  qa, rag, question - RAG question-answering system
+  help, --help, -h  - Display this help message
+
+FEATURES:
+📚 Document Processing:
+  • Enhanced PDF processing with Grobid integration
+  • Multi-format support (PDF, TXT, Markdown)
+  • Structure-aware chunking for academic papers
+  • ChromaDB vector storage with embeddings
+
+ Semantic Search Mode:
+  • Interactive semantic search interface
+  • Similarity scoring and ranking
+  • Real-time document retrieval
+
+ RAG Q&A Mode:
+  • Intelligent question answering
+  • Academic citation formatting
+  • Confidence scoring and source attribution
+  • Free local LLM models (Phi-3, Mistral, etc.)
+
+REQUIREMENTS:
+  • Python 3.8+ with required packages
+  • Optional: Docker with Grobid for enhanced PDF processing
+  • Optional: GPU for faster LLM inference
+
+EXAMPLES:
+  python app.py search    # Semantic search mode
+  python app.py qa        # Q&A mode
+  python app.py help      # Show this help
+
+FIRST TIME SETUP:
+  1. Add documents to 'documents/' directory
+  2. Run the application to process documents
+  3. Choose your preferred interaction mode
+    """
+    print(help_text)
 
 
 def print_system_status():

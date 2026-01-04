@@ -1,25 +1,39 @@
-# Semantic Document Search
+# Semantic Document Search & Question Answering System
 
-A semantic document search system with integrated processing pipeline using ChromaDB vector database, sentence-transformers embeddings, and enhanced PDF processing via Grobid.
+A comprehensive semantic document search system with question-answering capabilities. Features advanced document processing, vector embeddings, and multiple query interfaces for academic and research documents.
 
-##  Project Status (95% Complete)
+## Project Overview
 
-### ✅ Completed Features
-1. **✅ Enhanced PDF Processing**: Grobid integration for academic papers with structure-aware chunking
-2. **✅ Embedding Generation**: sentence-transformers with all-MiniLM-L6-v2 model (384-dimensional vectors)  
-3. **✅ Vector Store Integration**: ChromaDB with dependency injection and semantic search
-4. **✅ Integrated Pipeline**: Complete DocumentLoader → EmbeddingGenerator → VectorStore workflow
+This system provides semantic search and intelligent question-answering across document collections using:
+- ChromaDB vector database for semantic storage
+- sentence-transformers for high-quality embeddings  
+- Groq API integration for natural language responses
+- PDF processing with Grobid for academic papers
 
-###  Optional Features
-- ** RAG Q&A System**: Question-answering interface (optional enhancement)
+## Features
+
+### Core Capabilities
+- **Semantic Search**: Natural language queries with similarity scoring
+- **Question Answering**: AI-powered responses using retrieved document context
+- **Multi-Format Support**: PDF, TXT, Markdown document processing
+- **Academic Focus**: Structure-aware processing for research papers
+- **Interactive Interfaces**: Command-line and programmatic access
+- **Persistent Storage**: ChromaDB vector database with metadata
+
+### Performance
+- **Search Speed**: Sub-second semantic queries  
+- **Embedding Model**: all-MiniLM-L6-v2 (384-dimensional vectors)
+- **Processing Rate**: ~43 embeddings/second (CPU)
+- **API Integration**: Groq for fast language model inference
+- **Memory Efficient**: Optimized embedding generation and storage
 
 
 
-##  Quick Start
+## Quick Start
 
-### 1. Setup Environment
+### 1. Environment Setup
 ```bash
-# Create and activate virtual environment  
+# Create virtual environment
 python -m venv vectorenv
 vectorenv\Scripts\activate  # Windows
 
@@ -27,15 +41,45 @@ vectorenv\Scripts\activate  # Windows
 pip install -r requirements.txt
 ```
 
-### 2. Run Semantic Search
+### 2. Document Processing
 ```bash
-# Start integrated pipeline with interactive search
-python app.py
+# Load and process documents
+python app.py load
+
+# Start interactive search
+python app.py search
 ```
 
-### 3. Optional: Enhanced PDF Processing
+### 3. Question Answering with AI
+
+**Setup API Key:**
 ```bash
-# Start Grobid server for better academic PDF processing
+# Copy template and add your API key
+copy .env.template .env
+# Edit .env file and add your Groq API key from https://console.groq.com/
+```
+
+**Option A: Advanced QA with AI (Recommended)**
+```bash
+# Ask questions with AI responses (uses .env configuration)
+python semantic_qa.py "explain transformer architecture"
+
+# Interactive mode
+python semantic_qa.py interactive
+```
+
+**Option B: Simple Document-based QA**
+```bash
+# Fast responses without external API
+python document_qa.py "what is attention mechanism?"
+
+# Interactive mode
+python document_qa.py interactive
+```
+
+### 4. Optional: Enhanced PDF Processing
+```bash
+# Start Grobid server for academic papers
 docker run -d --name grobid-server -p 8070:8070 lfoppiano/grobid:0.8.0
 ```
 
@@ -54,269 +98,179 @@ Query: "attention mechanism"
 ├── Score: 0.798 - "...self-attention computes attention weights for each position..."
 └── Score: 0.765 - "...multi-head attention provides multiple representation subspaces..."
 ```
-##  Usage Examples
+## Usage Examples
 
-### Complete Integrated Pipeline
+### Semantic Search
 ```python
 from src.integrated_pipeline import DocumentSearchPipeline
 
-# Initialize integrated pipeline with dependency injection
+# Initialize pipeline
 pipeline = DocumentSearchPipeline(
     use_grobid=True,
     chunk_size=1000,
     chunk_overlap=150
 )
 
-# Process documents from directory
+# Process documents
 results = pipeline.process_documents_directory("documents/")
 
-# Interactive search interface  
-pipeline.interactive_search()
-
-# Programmatic search
+# Search documents
 search_results = pipeline.search_documents(
-    "What is machine learning?", 
-    n_results=3
+    "machine learning algorithms", 
+    n_results=5
 )
-for result in search_results['results']:
-    print(f"Score: {result['similarity']:.3f}")
-    print(f"Text: {result['text'][:100]}...")
-
-# Display pipeline statistics
-pipeline.display_pipeline_stats()
 ```
 
-### Individual Component Usage
+### Question Answering
 ```python
-# Document processing only
-from src.document_loader import DocumentLoader
-loader = DocumentLoader(use_grobid=True, chunk_size=1000)
-chunks = loader.load_pdf("document.pdf")
+# Using Groq-powered QA system
+from semantic_qa import GroqRAGSystem
 
-# Embedding generation only  
+qa_system = GroqRAGSystem()
+response = qa_system.ask_question("What is transformer architecture?")
+print(response['answer'])
+```
+
+### Document Processing
+```python
+from src.document_loader import DocumentLoader
 from src.embedding_generator import EmbeddingGenerator
+from src.vector_store import VectorStore
+
+# Process individual documents
+loader = DocumentLoader(use_grobid=True)
+chunks = loader.load_pdf("research_paper.pdf")
+
+# Generate embeddings
 embedder = EmbeddingGenerator()
 embeddings = embedder.generate_embeddings(chunks)
 
-# Vector storage only
-from src.vector_store import VectorStore  
+# Store in vector database
 store = VectorStore(embedder, persist_directory="data/chroma_db")
-results = store.search("query", n_results=5)
+results = store.search("neural networks", n_results=3)
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 semantic-document-search/
 ├── src/
-│   ├── document_loader.py       # Enhanced PDF processing with Grobid
-│   ├── embedding_generator.py   # Semantic embeddings with sentence-transformers
-│   ├── vector_store.py          # ChromaDB vector operations with dependency injection
-│   └── integrated_pipeline.py   # Complete processing pipeline orchestration
-├── documents/                   # Input documents (PDF, TXT, MD)
+│   ├── document_loader.py       # PDF and document processing
+│   ├── embedding_generator.py   # Semantic embeddings generation
+│   ├── vector_store.py          # ChromaDB vector operations
+│   ├── integrated_pipeline.py   # Complete processing pipeline
+│   ├── groq_llm_interface.py   # Groq API integration
+│   └── rag_*.py                # Question-answering components
+├── documents/                   # Input documents directory
 ├── data/                       # ChromaDB persistent storage
-├── vectorenv/                  # Python virtual environment
-├── app.py                      # Main application entry point  
-├── requirements.txt            # Project dependencies
-├── .gitignore                  # Git ignore patterns
-└── README.md                   # Project documentation
+├── app.py                      # Main application interface
+├── semantic_qa.py              # AI-powered question answering
+├── document_qa.py              # Document-based question answering
+├── requirements.txt            # Python dependencies
+└── README.md                   # Documentation
 ```
 
-## 🔧 Architecture & Features
+## System Architecture
 
-### Core Architecture
-- **Dependency Injection**: VectorStore accepts EmbeddingGenerator instance (no duplication)
-- **Single Model Instance**: Shared sentence-transformer model across entire pipeline
-- **Duck Typing Validation**: Flexible chunk processing using attribute checking
-- **Persistent Storage**: ChromaDB vector database with metadata preservation
-- **Memory Optimization**: Efficient embedding generation with batch processing
+### Core Components
+- **Document Processing**: Multi-format support with Grobid integration for academic papers
+- **Vector Embeddings**: sentence-transformers with 384-dimensional semantic vectors
+- **Vector Storage**: ChromaDB for persistent, searchable document storage
+- **Question Answering**: Groq API integration for natural language responses
+- **Search Interface**: Multiple query modes with similarity scoring
 
-### Key Capabilities
-- **✅ Multi-Format Support**: PDF, TXT, Markdown files
-- **✅ Academic PDF Processing**: Structure-aware chunking with Grobid integration
-- **✅ Semantic Search**: Natural language queries with similarity scoring  
-- **✅ Interactive Interface**: Real-time search with command-line interface
-- **✅ Batch Processing**: Directory-level document processing with progress tracking
-- **✅ Metadata Preservation**: Document source, chunk IDs, academic sections
+### Technical Specifications
+- **Embedding Model**: all-MiniLM-L6-v2 (384 dimensions, cosine similarity)
+- **Vector Database**: ChromaDB with persistent SQLite storage
+- **API Integration**: Groq for fast language model inference (14,400 requests/day free)
+- **Document Support**: PDF, TXT, Markdown with metadata preservation
+- **Performance**: Sub-second queries, ~43 embeddings/second processing
 
-## 🔧 Configuration Options
+## Configuration Options
 
-### Document Processing Configuration
+### Document Processing
 ```python
-# Academic Papers (recommended)
+# Academic papers (recommended)
 pipeline = DocumentSearchPipeline(
-    use_grobid=True,              # Enable Grobid for better PDF parsing
-    chunk_size=1000,              # Optimal for academic content
-    chunk_overlap=150,            # Preserve context between chunks
-    preserve_academic_structure=True
+    use_grobid=True,
+    chunk_size=1000,
+    chunk_overlap=150
 )
 
-# General Documents
+# General documents
 pipeline = DocumentSearchPipeline(
-    use_grobid=False,             # Use PyPDF2 fallback
-    chunk_size=500,               # Smaller chunks for varied content
+    use_grobid=False,
+    chunk_size=500,
     chunk_overlap=100
 )
 ```
 
-### ChromaDB Vector Store Configuration  
+### Question Answering Models
 ```python
-# Custom vector store settings
-from src.vector_store import VectorStore
-from src.embedding_generator import EmbeddingGenerator
+# High-quality responses (recommended)
+qa_system = GroqRAGSystem(model_name="llama-3.1-70b-versatile")
 
-embedder = EmbeddingGenerator(model_name="all-MiniLM-L6-v2")
-store = VectorStore(
-    embedding_generator=embedder,
-    persist_directory="custom/path/chroma_db",
-    collection_name="my_documents"
-)
+# Fast responses
+qa_system = GroqRAGSystem(model_name="llama-3.1-8b-instant")
 ```
 
-##  Docker Integration
+## Docker Integration
 
-### Grobid Server (Optional - Enhanced PDF Processing)
+### Grobid Server (Optional)
+For enhanced academic PDF processing:
+
 ```bash
-# Start Grobid server for academic PDF processing
+# Start Grobid server
 docker run -d --name grobid-server -p 8070:8070 lfoppiano/grobid:0.8.0
 
-# Check server status  
+# Check status
 docker ps | grep grobid
-
-# View logs
-docker logs grobid-server
 
 # Stop server
 docker stop grobid-server && docker rm grobid-server
 ```
 
-### Server Health Check
-```python
-import requests
-try:
-    response = requests.get("http://localhost:8070/api/isalive") 
-    print(f"Grobid Status: {' Running' if response.status_code == 200 else ' Down'}")
-except:
-    print(" Grobid server not available - using PyPDF2 fallback")
-```
+## API Integration
 
-##  Technical Details
+### Environment Configuration
+1. Copy the template: `copy .env.template .env`
+2. Edit `.env` file and add your API key:
+   ```
+   GROQ_API_KEY=your_actual_api_key_here
+   ```
+3. Get free API key from https://console.groq.com/
+4. Usage limits: 14,400 requests per day (free tier)
 
-### Vector Store Integration (Phase 1 - ✅ COMPLETED)
-- **Dependency Injection**: VectorStore no longer creates internal SentenceTransformer model
-- **Single Model Instance**: EmbeddingGenerator instance shared across entire pipeline  
-- **Memory Optimization**: Eliminates model duplication, reduces memory footprint
-- **Duck Typing**: Flexible chunk validation using `hasattr()` instead of strict type checking
-- **Pipeline Integration**: Complete DocumentLoader → EmbeddingGenerator → VectorStore workflow
-
-### Embedding Specifications
-- **Model**: sentence-transformers/all-MiniLM-L6-v2
-- **Dimensions**: 384-dimensional dense vectors
-- **Similarity**: Cosine similarity for semantic search
-- **Performance**: ~50ms query response time for 49 chunks
-- **Batch Processing**: Optimized embedding generation with progress tracking
-
-### Academic Section Detection
-**Supported Section Types:**
-- **Abstract**: Paper summary and overview
-- **Introduction**: Background and motivation  
-- **Methods/Methodology**: Research approach and techniques
-- **Results**: Experimental findings and data
-- **Discussion**: Analysis and interpretation
-- **Conclusion**: Summary and implications
-- **References**: Citation and bibliography
-- **Acknowledgments**: Credits and funding
-
-### ChromaDB Storage Details
-```python
-# Vector database configuration
-{
-    "embedding_function": sentence_transformers.all_MiniLM_L6_v2,
-    "similarity_metric": "cosine",  
-    "storage_backend": "sqlite3",
-    "persistence": True,
-    "metadata_fields": ["source", "chunk_id", "section_type"]
-}
-```
-
-##  Future Enhancements (Optional)
-
-### RAG Q&A System Integration
-```python
-# Potential next phase implementation
-class RAGQuestionAnswering:
-    def __init__(self, pipeline: DocumentSearchPipeline):
-        self.pipeline = pipeline
-        self.llm = initialize_llm()  # GPT/Claude integration
-    
-    def answer_question(self, question: str, context_limit: int = 3):
-        # Retrieve relevant chunks
-        chunks = self.pipeline.search_documents(question, n_results=context_limit)
-        
-        # Generate answer using LLM with retrieved context
-        context = "\n".join([chunk['text'] for chunk in chunks['results']])
-        answer = self.llm.generate_answer(question, context)
-        
-        return {
-            "answer": answer,
-            "sources": chunks['results'],
-            "confidence": calculate_confidence(chunks)
-        }
-```
-
----
-
-** Vector Store Integration Phase 1 Complete!** The semantic document search system is fully operational with integrated pipeline, dependency injection, and semantic search capabilities. Ready for production use or optional RAG Q&A enhancement.
-- **References**: Citations
-
-##  Examples
-
-Run demo scripts:
+### Configuration Options
+The `.env` file supports these settings:
 ```bash
-python app.py                                   # Main integrated pipeline
-python src/integrated_pipeline.py              # Direct pipeline testing
-python examples/embedding_pipeline_example.py  # Embedding examples
-python examples/grobid_example.py              # Grobid demonstration  
-python examples/test_pdf_chunking.py           # PDF processing test
-python examples/setup_grobid.py                # Setup helper
+GROQ_API_KEY=your_api_key_here     # Required for AI Q&A
+DEFAULT_MODEL=llama-3.1-8b-instant # Optional: Default model
+MAX_TOKENS=1024                     # Optional: Response length
+TEMPERATURE=0.1                     # Optional: Response creativity
 ```
 
-##  Requirements
+### Available Models
+- **llama-3.1-70b-versatile**: Best for complex reasoning
+- **llama-3.1-8b-instant**: Fastest responses
+- **mixtral-8x7b-32768**: Excellent for academic content
+
+## Requirements
 
 - Python 3.8+
-- Docker (optional, for Grobid PDF processing)
-- Dependencies: sentence-transformers, torch, chromadb, PyPDF2, requests
-- See requirements.txt for complete list
+- Dependencies listed in requirements.txt
+- Optional: Docker for Grobid PDF processing
+- Optional: Groq API key for AI question answering
 
-##  Project Status
+### Installation
+```bash
+pip install -r requirements.txt
+```
 
-**Current Version**: Integrated Pipeline (v3.0)
-
-**✅ Completed Components:**
-- Document processing with Grobid integration
-- Semantic embedding generation (384-dim vectors)
-- Vector database storage with ChromaDB
-- Semantic search with similarity scoring
-- Interactive command-line interface
-- Dependency injection architecture
-- Comprehensive error handling and logging
-
-**Usage Statistics:**
-- Successfully processes PDF, TXT, MD documents
-- Generates embeddings at ~43 embeddings/second (CPU)
-- Stores vectors with persistent ChromaDB storage
-- Enables real-time semantic search queries
-- Supports interactive and programmatic interfaces
-
-**Ready for Production:**
-The system is fully functional for semantic document search with all core components integrated and tested.
-
-##  Performance
-
-- **Document Processing**: ~90-95% success rate with Grobid for academic papers
-- **Embedding Generation**: ~100-240 embeddings/second (CPU), ~1000+/second (GPU)
-- **Pipeline Integration**: Single model instance, optimized memory usage (~400MB)
-- **Search Performance**: Real-time semantic queries with sub-second response
-- **Model**: all-MiniLM-L6-v2 (384 dimensions, L2-normalized)
-- **Storage**: ChromaDB persistent vector database
-- **Throughput**: Complete pipeline processes ~49 chunks in ~1.1 seconds
+Core dependencies:
+- chromadb: Vector database
+- sentence-transformers: Semantic embeddings
+- torch: ML framework (CPU version)
+- transformers: Model loading
+- requests: API communication
+- pypdf2: PDF processing

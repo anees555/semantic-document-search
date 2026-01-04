@@ -156,6 +156,12 @@ class DocumentSearchPipeline:
         
         return results
     
+    def search(self, query: str, top_k: int = 5, similarity_threshold: float = 0.0):
+        """
+        Alias for search_documents to maintain compatibility with RAG components
+        """
+        return self.search_documents(query, n_results=top_k, similarity_threshold=similarity_threshold)
+    
     def display_pipeline_stats(self):
         """Display comprehensive pipeline statistics."""
         print("\\n" + "="*60)
