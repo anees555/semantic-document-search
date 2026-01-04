@@ -138,7 +138,7 @@ class EmbeddingGenerator:
         
         return text
     
-    def _validate_chunk(self, chunk: DocumentChunk) -> bool:
+    def _validate_chunk(self, chunk) -> bool:
         """
         Validate a document chunk for embedding generation.
         
@@ -148,21 +148,22 @@ class EmbeddingGenerator:
         Returns:
             True if chunk is valid for processing
         """
-        if not isinstance(chunk, DocumentChunk):
-            logger.warning(f"Invalid chunk type: {type(chunk)}")
+        # Check if object has required attributes (duck typing)
+        if not hasattr(chunk, 'text') or not hasattr(chunk, 'chunk_id'):
+            logger.warning(f"Invalid chunk: missing text or chunk_id attributes")
             return False
         
         if not chunk.text or not chunk.text.strip():
-            logger.warning(f"Empty chunk text for chunk_id: {chunk.chunk_id}")
+            logger.warning(f"Empty chunk text for chunk_id: {getattr(chunk, 'chunk_id', 'unknown')}")
             return False
         
         preprocessed = self._preprocess_text(chunk.text)
         if len(preprocessed) < 5:  # Minimum meaningful length
-            logger.warning(f"Chunk too short after preprocessing: {chunk.chunk_id}")
+            logger.warning(f"Chunk too short after preprocessing: {getattr(chunk, 'chunk_id', 'unknown')}")
             return False
         
         if len(preprocessed) > 2000:  # Very long chunks
-            logger.info(f"Long chunk will be truncated: {chunk.chunk_id} ({len(preprocessed)} chars)")
+            logger.info(f"Long chunk will be truncated: {getattr(chunk, 'chunk_id', 'unknown')} ({len(preprocessed)} chars)")
         
         return True
     
@@ -192,14 +193,14 @@ class EmbeddingGenerator:
     
     def generate_embeddings(
         self, 
-        chunks: List[DocumentChunk],
+        chunks,  # Remove type hint to allow duck typing
         batch_size: Optional[int] = None
     ) -> List[List[float]]:
         """
         Generate embeddings for a list of document chunks.
         
         Args:
-            chunks: List of DocumentChunk objects
+            chunks: List of DocumentChunk objects or objects with text/chunk_id attributes
             batch_size: Override default batch size
             
         Returns:
@@ -290,9 +291,15 @@ class EmbeddingGenerator:
             Cosine similarity score (0.0 to 1.0)
         """
         try:
-            # Create temporary chunks
-            chunk1 = DocumentChunk(text=text1, metadata={}, chunk_id="temp1")
-            chunk2 = DocumentChunk(text=text2, metadata={}, chunk_id="temp2")
+            # Create temporary chunks (using duck typing)
+            class TempChunk:
+                def __init__(self, text, chunk_id):
+                    self.text = text
+                    self.metadata = {}
+                    self.chunk_id = chunk_id
+            
+            chunk1 = TempChunk(text1, "temp1")
+            chunk2 = TempChunk(text2, "temp2")
             
             # Generate embeddings
             embeddings = self.generate_embeddings([chunk1, chunk2])

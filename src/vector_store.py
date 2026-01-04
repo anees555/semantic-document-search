@@ -5,10 +5,13 @@ Vector database management using ChromaDB
 
 import chromadb
 from chromadb.config import Settings
-from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Optional, Tuple
 import os
 from pathlib import Path
+from dataclasses import dataclass
+
+# Import EmbeddingGenerator for dependency injection
+from embedding_generator import EmbeddingGenerator
 
 
 class VectorStore:
@@ -19,21 +22,28 @@ class VectorStore:
     
     def __init__(
         self,
+        embedding_generator: Optional[EmbeddingGenerator] = None,
         persist_directory: str = "./data/chroma_db",
-        collection_name: str = "documents",
-        embedding_model: str = "all-MiniLM-L6-v2"
+        collection_name: str = "documents"
     ):
         """
-        Initialize VectorStore
+        Initialize VectorStore with dependency injection
         
         Args:
+            embedding_generator: EmbeddingGenerator instance for embeddings
             persist_directory: Directory to store ChromaDB data
             collection_name: Name of the collection
-            embedding_model: Sentence Transformer model name
         """
         self.persist_directory = persist_directory
         self.collection_name = collection_name
-        self.embedding_model_name = embedding_model
+        
+        # Use injected embedding generator or create default
+        if embedding_generator is not None:
+            self.embedding_generator = embedding_generator
+            print(f"Using injected EmbeddingGenerator: {embedding_generator.model_name}")
+        else:
+            print("No EmbeddingGenerator provided - creating default instance")
+            self.embedding_generator = EmbeddingGenerator()
         
         # Create directory if it doesn't exist
         Path(persist_directory).mkdir(parents=True, exist_ok=True)
@@ -46,11 +56,6 @@ class VectorStore:
                 allow_reset=True
             )
         )
-        
-        # Load embedding model
-        print(f"Loading embedding model: {embedding_model}")
-        self.embedding_model = SentenceTransformer(embedding_model)
-        print(f"Model loaded. Embedding dimension: {self.embedding_model.get_sentence_embedding_dimension()}")
         
         # Get or create collection
         self.collection = self._get_or_create_collection()
@@ -79,25 +84,6 @@ class VectorStore:
         return collection
     
     
-    def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """
-        Generate embeddings for a list of texts
-        
-        Args:
-            texts: List of text strings
-            
-        Returns:
-            List of embedding vectors
-        """
-        print(f"Generating embeddings for {len(texts)} texts...")
-        embeddings = self.embedding_model.encode(
-            texts,
-            show_progress_bar=True,
-            convert_to_numpy=True
-        )
-        return embeddings.tolist()
-    
-    
     def add_documents(
         self,
         chunks: List,
@@ -124,8 +110,58 @@ class VectorStore:
         ids = [chunk.chunk_id for chunk in chunks]
         metadatas = [chunk.metadata for chunk in chunks]
         
-        # Generate embeddings
-        embeddings = self.generate_embeddings(texts)
+        # Generate embeddings using injected generator
+        embeddings = self.embedding_generator.generate_embeddings(chunks)
+        
+        # Add to ChromaDB in batches
+        total_added = 0
+        for i in range(0, len(chunks), batch_size):
+            batch_end = min(i + batch_size, len(chunks))
+            
+            self.collection.add(
+                documents=texts[i:batch_end],
+                embeddings=embeddings[i:batch_end],
+                metadatas=metadatas[i:batch_end],
+                ids=ids[i:batch_end]
+            )
+            
+            total_added += (batch_end - i)
+            print(f"  Added batch {i//batch_size + 1}: {total_added}/{len(chunks)} chunks")
+        
+        print(f"Successfully added {total_added} chunks to collection")
+        return total_added
+    
+    
+    def add_documents_with_embeddings(
+        self,
+        chunks: List,
+        embeddings: List[List[float]],
+        batch_size: int = 100
+    ) -> int:
+        """
+        Add document chunks with pre-computed embeddings to the vector store
+        
+        Args:
+            chunks: List of DocumentChunk objects
+            embeddings: Pre-computed embeddings (same order as chunks)
+            batch_size: Number of documents to process at once
+            
+        Returns:
+            Number of documents added
+        """
+        if not chunks or not embeddings:
+            print("No chunks or embeddings to add")
+            return 0
+            
+        if len(chunks) != len(embeddings):
+            raise ValueError(f"Chunks ({len(chunks)}) and embeddings ({len(embeddings)}) count mismatch")
+        
+        print(f"\nAdding {len(chunks)} chunks with pre-computed embeddings...")
+        
+        # Prepare data
+        texts = [chunk.text for chunk in chunks]
+        ids = [chunk.chunk_id for chunk in chunks]
+        metadatas = [chunk.metadata for chunk in chunks]
         
         # Add to ChromaDB in batches
         total_added = 0
@@ -163,15 +199,22 @@ class VectorStore:
         Returns:
             Dictionary containing results with texts, distances, and metadata
         """
-        # Generate query embedding
-        query_embedding = self.embedding_model.encode(
-            [query],
-            convert_to_numpy=True
-        ).tolist()
+        # Create temporary DocumentChunk for query (using duck typing)
+        class QueryChunk:
+            def __init__(self, text, chunk_id):
+                self.text = text
+                self.metadata = {"query": True}
+                self.chunk_id = chunk_id
+        
+        query_chunk = QueryChunk(query, "temp_query")
+        
+        # Generate query embedding using injected generator
+        query_embeddings = self.embedding_generator.generate_embeddings([query_chunk])
+        query_embedding = query_embeddings[0]
         
         # Search in ChromaDB
         results = self.collection.query(
-            query_embeddings=query_embedding,
+            query_embeddings=[query_embedding],
             n_results=n_results,
             where=filter_metadata,
             include=["documents", "metadatas", "distances"]
@@ -255,8 +298,8 @@ class VectorStore:
             'total_documents': count,
             'has_data': has_data,
             'persist_directory': self.persist_directory,
-            'embedding_model': self.embedding_model_name,
-            'embedding_dimension': self.embedding_model.get_sentence_embedding_dimension()
+            'embedding_model': self.embedding_generator.model_name,
+            'embedding_dimension': self.embedding_generator.embedding_dim
         }
         
         return stats
@@ -322,13 +365,20 @@ class VectorStore:
             new_metadata: New metadata to merge with existing
         """
         if new_text:
-            # Generate new embedding
-            new_embedding = self.embedding_model.encode([new_text]).tolist()
+            # Generate new embedding using injected generator (duck typing)
+            class TempChunk:
+                def __init__(self, text, metadata, chunk_id):
+                    self.text = text
+                    self.metadata = metadata or {}
+                    self.chunk_id = chunk_id
+            
+            temp_chunk = TempChunk(new_text, new_metadata or {}, doc_id)
+            new_embeddings = self.embedding_generator.generate_embeddings([temp_chunk])
             
             self.collection.update(
                 ids=[doc_id],
                 documents=[new_text],
-                embeddings=new_embedding,
+                embeddings=new_embeddings,
                 metadatas=[new_metadata] if new_metadata else None
             )
         elif new_metadata:
@@ -384,38 +434,27 @@ class VectorStore:
         Returns:
             Similarity score (0-1)
         """
-        embeddings = self.embedding_model.encode([text1, text2])
-        
-        # Calculate cosine similarity
-        from numpy import dot
-        from numpy.linalg import norm
-        
-        similarity = dot(embeddings[0], embeddings[1]) / (
-            norm(embeddings[0]) * norm(embeddings[1])
-        )
-        
-        return float(similarity)
+        # Use injected embedding generator for consistency
+        return self.embedding_generator.compare_embeddings(text1, text2)
 
 
 # Example usage and testing
 if __name__ == "__main__":
     print("Vector Store - Test Run\n")
     
-    # Initialize vector store
+    # Import required classes
+    from embedding_generator import EmbeddingGenerator
+    from document_loader import DocumentChunk
+    
+    # Initialize components with dependency injection
+    generator = EmbeddingGenerator(show_progress=True)
     store = VectorStore(
+        embedding_generator=generator,
         persist_directory="./data/test_chroma_db",
         collection_name="test_collection"
     )
     
-    # Create sample chunks (mimicking document_loader output)
-    from dataclasses import dataclass
-    
-    @dataclass
-    class DocumentChunk:
-        text: str
-        metadata: Dict
-        chunk_id: str
-    
+    # Create sample chunks
     sample_chunks = [
         DocumentChunk(
             text="Machine learning is a subset of artificial intelligence focused on building systems that learn from data.",
